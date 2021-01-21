@@ -140,7 +140,7 @@ const App = () => {
 	useEffect(() => {
 		fetchTodos();
 		console.log(editing);
-	}, []);
+	}, [editing]);
 
 	return (
 		<div className="App">
