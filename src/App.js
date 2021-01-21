@@ -139,8 +139,7 @@ const App = () => {
 
 	useEffect(() => {
 		fetchTodos();
-		console.log(editing);
-	}, [editing]);
+	}, []);
 
 	return (
 		<div className="App">
@@ -168,6 +167,7 @@ const App = () => {
 										onClick={addTodo}
 										color="primary"
 										variant="outlined"
+										type="submit"
 									>
 										Create Todo
 									</Button>
@@ -178,6 +178,7 @@ const App = () => {
 										onClick={saveTodo}
 										color="primary"
 										variant="outlined"
+										type="submit"
 									>
 										Save Todo
 									</Button>
