@@ -5,25 +5,31 @@ import {
 	Button,
 	Card,
 	CardContent,
+	FormControlLabel,
+	IconButton,
 	List,
 	ListItem,
 	ListItemAvatar,
 	ListItemSecondaryAction,
 	ListItemText,
-	IconButton,
+	Switch,
 	TextField,
+	Typography,
 } from '@material-ui/core';
 import CreateIcon from '@material-ui/icons/Create';
 import DeleteIcon from '@material-ui/icons/Delete';
 import { makeStyles } from '@material-ui/core/styles';
 import { listTodos } from './graphql/queries';
-import { createTodo, deleteTodo, updateTodo } from './graphql/mutations';
+import {
+	add, createTodo, deleteTodo, updateTodo,
+} from './graphql/mutations';
 import awsExports from './aws-exports';
 import './App.css';
 
 Amplify.configure(awsExports);
 
 const initialState = { name: '', description: '' };
+const initialNumState = { number1: 0, number2: 0 };
 
 const styles = {
 	container: {
@@ -72,8 +78,10 @@ const useStyles = makeStyles((theme) => ({
 
 const App = () => {
 	const [editing, setEditState] = useState(false);
+	const [checked, setChecked] = useState(false);
 	const [formState, setFormState] = useState(initialState);
 	const [todos, setTodos] = useState([]);
+	const [sum, setSum] = useState(0);
 	const classes = useStyles();
 
 	function setInput(key, value) {
@@ -85,20 +93,24 @@ const App = () => {
 			const todoData = await API.graphql(graphqlOperation(listTodos));
 			const listOfTodos = todoData.data.listTodos.items;
 			setTodos(listOfTodos);
-		} catch (err) {
-			console.log('error fetching todos');
+		} catch (error) {
+			console.log('error fetching todos', error);
 		}
 	}
 
-	async function addTodo() {
+	async function addTodo(event) {
 		try {
-			if (!formState.name || !formState.description) return;
+			if (!formState.name || !formState.description) {
+				event.preventDefault();
+				return;
+			}
 			const todo = { ...formState };
 			setTodos([...todos, todo]);
 			setFormState(initialState);
 			await API.graphql(graphqlOperation(createTodo, { input: todo }));
-		} catch (err) {
-			console.log('error creating todo:', err);
+			fetchTodos();
+		} catch (error) {
+			console.log('error creating todo:', error);
 		}
 	}
 
@@ -112,30 +124,105 @@ const App = () => {
 	}
 
 	async function saveTodo() {
-		console.log(formState);
 		try {
 			await API.graphql(graphqlOperation(updateTodo, { input: formState }));
 			fetchTodos();
 			setFormState(initialState);
 			setEditState(false);
-		} catch (err) {
-			console.log('error updating todo:', err);
+		} catch (error) {
+			console.log('error updating todo:', error);
 		}
 	}
 
 	async function removeTodo(todo) {
-		const todoId = {
-			id: todo.id,
-		};
 		try {
-			await API.graphql(graphqlOperation(deleteTodo, { input: todoId }));
+			await API.graphql(graphqlOperation(deleteTodo, { input: { id: todo.id } }));
 			setFormState(initialState);
 			fetchTodos();
-			alert('todo deleted!');
-		} catch (err) {
-			console.log('error deleting todo:', err);
+		} catch (error) {
+			console.log('error deleting todo:', error);
 		}
 	}
+
+	async function addInputs(event) {
+		event.preventDefault();
+		try {
+			const numbersSum = await API.graphql(graphqlOperation(add, {
+				number1: +formState.number1, number2: +formState.number2,
+			}));
+			setSum(numbersSum.data.add);
+		} catch (error) {
+			console.log('error adding numbers', error);
+		}
+	}
+
+	const check = () => {
+		setChecked(!checked);
+		if (checked) {
+			setFormState(initialNumState);
+			setSum(0);
+		}
+		setFormState(initialState);
+	};
+
+	const ListItems = () => (
+		todos.map((todo) => (
+			<ListItem
+				style={styles.item}
+				key={todo.id}
+			>
+				<ListItemText
+					primary={todo.name}
+					secondary={todo.description}
+				/>
+				<ListItemAvatar>
+					<IconButton
+						edge="end"
+						aria-label="delete"
+						onClick={() => updateThisTodo(todo)}
+					>
+						<CreateIcon />
+					</IconButton>
+				</ListItemAvatar>
+				<ListItemSecondaryAction>
+					<IconButton
+						edge="end"
+						aria-label="delete"
+						onClick={() => removeTodo(todo)}
+					>
+						<DeleteIcon />
+					</IconButton>
+				</ListItemSecondaryAction>
+			</ListItem>
+		))
+	);
+
+	const ShowButtons = () => {
+		if (editing) {
+			return (
+				<Button
+					style={styles.button}
+					onClick={saveTodo}
+					color="primary"
+					variant="outlined"
+					type="submit"
+				>
+					Save Todo
+				</Button>
+			);
+		}
+		return (
+			<Button
+				style={styles.button}
+				onClick={addTodo}
+				color="primary"
+				variant="outlined"
+				type="submit"
+			>
+				Create Todo
+			</Button>
+		);
+	};
 
 	useEffect(() => {
 		fetchTodos();
@@ -144,79 +231,87 @@ const App = () => {
 	return (
 		<div className="App">
 			<Card style={styles.container}>
+				<h2>Amplify Example App</h2>
 				<CardContent>
-					<form className={classes.root}>
-						<h2>Amplify Example App</h2>
-						<TextField
-							onChange={(event) => setInput('name', event.target.value)}
-							style={styles.input}
-							value={formState.name}
-							placeholder="Name"
-						/>
-						<TextField
-							onChange={(event) => setInput('description', event.target.value)}
-							style={styles.input}
-							value={formState.description}
-							placeholder="Description"
-						/>
-						{
-							!editing
-								? (
-									<Button
-										style={styles.button}
-										onClick={addTodo}
-										color="primary"
-										variant="outlined"
-										type="submit"
-									>
-										Create Todo
-									</Button>
-								)
-								:							(
-									<Button
-										style={styles.button}
-										onClick={saveTodo}
-										color="primary"
-										variant="outlined"
-										type="submit"
-									>
-										Save Todo
-									</Button>
-								)
-						}
-					</form>
+					<FormControlLabel
+						control={(
+							<Switch
+								checked={checked}
+								onChange={check}
+								name="Switch input"
+								color="primary"
+								inputProps={{ 'aria-label': 'checkbox' }}
+							/>
+						)}
+						label={`${checked ? 'Numbers' : 'List View'}`}
+					/>
 				</CardContent>
+				{
+					checked ? (
+						<CardContent>
+							<form className={classes.root}>
+								<TextField
+									onChange={(event) => setInput('number1', event.target.value)}
+									style={styles.input}
+									value={formState.number1}
+									placeholder="Number 1"
+								/>
+								<TextField
+									onChange={(event) => setInput('number2', event.target.value)}
+									style={styles.input}
+									value={formState.number2}
+									placeholder="Number 2"
+								/>
+								<Button
+									style={styles.button}
+									onClick={addInputs}
+									color="primary"
+									variant="outlined"
+									type="submit"
+								>
+									Add Values
+								</Button>
+							</form>
+						</CardContent>
+					) : (
+						<CardContent>
+							<form className={classes.root}>
+
+								<TextField
+									onChange={(event) => setInput('name', event.target.value)}
+									style={styles.input}
+									value={formState.name}
+									placeholder="Name"
+								/>
+								<TextField
+									onChange={(event) => setInput('description', event.target.value)}
+									style={styles.input}
+									value={formState.description}
+									placeholder="Description"
+								/>
+								<ShowButtons />
+							</form>
+						</CardContent>
+					)
+
+				}
+
 				<CardContent>
-					<List dense>
-						{
-							todos.map((todo, index) => (
-								<ListItem style={styles.item} key={todo[index]}>
-									<ListItemText
-										primary={todo.name}
-										secondary={todo.description}
-									/>
-									<ListItemAvatar>
-										<IconButton
-											edge="end"
-											aria-label="delete"
-											onClick={() => updateThisTodo(todo)}
-										>
-											<CreateIcon />
-										</IconButton>
-									</ListItemAvatar>
-									<ListItemSecondaryAction>
-										<IconButton
-											edge="end"
-											aria-label="delete"
-											onClick={() => removeTodo(todo)}
-										>
-											<DeleteIcon />
-										</IconButton>
-									</ListItemSecondaryAction>
-								</ListItem>
-							))
-						}
-					</List>
+					{
+						checked
+							? (
+								<Typography>
+									The sum is
+									{' '}
+									{sum}
+								</Typography>
+							)
+							:							(
+								<List dense>
+									<ListItems />
+								</List>
+							)
+					}
 				</CardContent>
 			</Card>
 		</div>
