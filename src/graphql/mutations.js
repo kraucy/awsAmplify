@@ -1,6 +1,11 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
+export const add = /* GraphQL */ `
+  mutation Add($number1: Int, $number2: Int) {
+    add(number1: $number1, number2: $number2)
+  }
+`;
 export const createTodo = /* GraphQL */ `
   mutation CreateTodo(
     $input: CreateTodoInput!

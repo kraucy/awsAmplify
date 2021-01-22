@@ -1,10 +1,7 @@
-exports.handler = (event) => {
-  //eslint-disable-line
-	console.log(JSON.stringify(event, null, 2));
-	event.Records.forEach((record) => {
-		console.log(record.eventID);
-		console.log(record.eventName);
-		console.log('DynamoDB Record: %j', record.dynamodb);
-	});
-	return Promise.resolve('Successfully processed DynamoDB record');
+exports.handler = async (event) => {
+	if (event) {
+		const response = event.arguments.number1 + event.arguments.number2;
+		return response;
+	}
+	throw new Error('Resolver not found');
 };
